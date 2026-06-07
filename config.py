@@ -1,0 +1,29 @@
+from pathlib import Path 
+
+# PATHS:
+
+ROOT_DIR = Path( __file__).parent
+DATA_DIR = ROOT_DIR  / "data"
+MODEL_SAVE_DIR = ROOT_DIR / "model"
+MODEL_SAVE_PATH = MODEL_SAVE_DIR / "model.pt"
+# DATA
+
+NUM_CLASSES = 10
+
+# CNN MODEL:
+
+CONV_LAYERS = [1 ,32 ,64]
+
+# WARNING! - FIRST LINEAR NODES NUMBER HAS TO BE CALCULATED BY HAND
+LINEAR_LAYERS = [ 7 * 7 * 64 , 128 ]
+
+DROPOUT_RATE = 0.5
+
+# TRAINING
+
+BATCH_SIZE = 64
+
+EPOCHS = 1
+
+LEARNING_RATE = 0.001
+
