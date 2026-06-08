@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from matplotlib import pyplot as plt
 
 from src.dataset import get_dataloaders
-from src.utils import get_device , save_model
+from src.utils import get_device , save_model, save_image
 from src.CNN import MnistCNN
 import config
 
@@ -43,6 +44,22 @@ def evaluate(model, loader, criterion, device): # evaluation only
     avg_loss = total_loss / len(loader) # actual loss and accuracy
     accuracy = correct / len(loader.dataset)
     return avg_loss, accuracy
+
+def save_model_visual_result( model: nn.Module , input: torch.Tensor , filename: str ):
+    model.eval()
+    with torch.no_grad():
+        output = model( input ).squeeze()
+    original = input.squeeze().numpy()
+    fig, axes = plt.subplots( 1 , 2 , figsize=(4,2))
+    axes[0].imshow( original , cmap='gray')
+    axes[0].set_title(f"Input Image")
+    axes[0].axis('off')
+    axes[1].bar( range(10) , output )
+    axes[1].set_title(f"Probabilities")
+    plt.tight_layout()
+    save_image( plt , filename )
+    print( (output.argmax()).item() )
+    
 
 def run_training(): 
     device = get_device()
