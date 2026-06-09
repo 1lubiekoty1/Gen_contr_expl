@@ -5,8 +5,10 @@ from pathlib import Path
 ROOT_DIR = Path( __file__).parent
 DATA_DIR = ROOT_DIR  / "data"
 MODEL_SAVE_DIR = ROOT_DIR / "model"
-MODEL_SAVE_PATH = MODEL_SAVE_DIR / "model.pt"
+#MODEL_SAVE_PATH = MODEL_SAVE_DIR / "model.pt" #please don't break
 IMAGE_SAVE_DIR = ROOT_DIR / "images"
+ENCODERS_PATH = ROOT_DIR / "encoders"
+
 # DATA
 
 NUM_CLASSES = 10

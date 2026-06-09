@@ -4,3 +4,8 @@ my idea:
    tries make a new image that gives a different class
  - it will have loss function as a BCELoss (for making a different class) and
    ImageDifferenceLoss ( for how much image has been altered ), but the first one must be more important
+Ok, let's assume I follow this method.
+I need first to make some loss functions:
+	- target loss (did succeed changing class)
+	- proximity loss (are changes small)
+	- plausability loss (do changes have sense)
