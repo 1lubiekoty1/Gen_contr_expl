@@ -8,7 +8,7 @@ from src.dataset import get_dataloaders
 from torchvision import datasets, transforms
 
 
-#src.trainer.run_training();
+src.trainer.run_training();
 
 #model = src.CNN.MnistCNN();
 #src.utils.load_model( model ) # i get some saved model
@@ -19,6 +19,6 @@ from torchvision import datasets, transforms
 
 plausability = src.autoencoder.ClassConditionalPlausibility()
 train , _ = get_dataloaders()
-#plausability.load_saved_autoencoders()
+plausability.load_saved_autoencoders()
 plausability.train_all( train , src.utils.get_device() );
 plausability.save_trained_autoencoders()

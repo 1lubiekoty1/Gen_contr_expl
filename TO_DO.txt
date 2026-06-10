@@ -1,11 +1,3 @@
-make some actual way of generating contrfacts
-my idea:
- - make a convolutional neural network that takes an image and a class and a model and then
-   tries make a new image that gives a different class
- - it will have loss function as a BCELoss (for making a different class) and
-   ImageDifferenceLoss ( for how much image has been altered ), but the first one must be more important
-Ok, let's assume I follow this method.
-I need first to make some loss functions:
-	- target loss (did succeed changing class)
-	- proximity loss (are changes small)
-	- plausability loss (do changes have sense)
+All loss functions are ready - now let's construct a CNN that will try to make a counterfact
+Apparently it is a common approach (and we are supposed to think of something new)
+but it was the first thing to come to my head and it simply makes sense

@@ -64,9 +64,7 @@ class ClassConditionalPlausibility:
         self.autoencoders = {i: MnistAutoencoder(latent_dim) for i in range(self.digits)}
         
 
-
-
-    def train_all(self, loader, device, epochs=20):
+    def train_all(self, loader, device, epochs=30):
         for digit in range(self.digits):
             print(f"Training autoencoder for digit {digit}...")
 
