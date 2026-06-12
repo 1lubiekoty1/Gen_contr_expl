@@ -22,3 +22,17 @@ def save_image( fig: plt.Figure , filename: str ):
     path = config.IMAGE_SAVE_DIR / filename
     fig.savefig( path , dpi=150 , bbox_inches="tight")
     print(f"Image saved to {path}")
+
+def merge_image_saliency( image: torch.Tensor , saliency: torch.Tensor ) -> torch.Tensor:
+    saliency = saliency - saliency.mean()
+    saliency = saliency/saliency.max()
+    #squeezed = False
+    #if( image.dim() == 4 ):
+    #    image = image.squeeze()
+    #    squeezed = True
+    image = image.squeeze()
+    image = image + saliency
+    #if( squeezed ):
+    #    image = image.unsqueeze(0)
+    image = image.unsqueeze(0)
+    return image

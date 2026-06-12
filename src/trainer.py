@@ -58,7 +58,7 @@ def save_model_visual_result( model: nn.Module , input: torch.Tensor , filename:
     axes[1].set_title(f"Probabilities")
     plt.tight_layout()
     save_image( plt , filename )
-    print( (output.argmax()).item() )
+    #print( (output.argmax()).item() )
     
 
 def run_training(): 
