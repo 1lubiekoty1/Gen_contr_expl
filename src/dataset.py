@@ -6,7 +6,7 @@ import config
 def get_dataloaders():
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean & std
+        transforms.Normalize((config.MNIST_MEAN,), (config.MNIST_STD,))
     ])
 
     train_set = datasets.MNIST(config.DATA_DIR, train=True,  download=True, transform=transform)
