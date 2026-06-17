@@ -1,4 +1,3 @@
-import torch
 import config
 import src.CNN
 import src.utils
@@ -33,7 +32,7 @@ def main():
     number = 231
     image, label = dataset[number]
     image = image.unsqueeze(0).to(device)  # (1,1,28,28)
-    target_class = 8
+    target_class = 6
 
     print(f"Original label: {label}, target class: {target_class}")
 
@@ -42,7 +41,7 @@ def main():
     all_metrics, summary = plot_counterfactual_grid(
         model, plausibility_model, examples, device=device,
         generate_kwargs={"num_steps": 300, "lr": 0.01},
-        save_path=str(config.IMAGE_SAVE_DIR / f"counterfactual_{number}.png")
+        save_path=str(config.IMAGE_SAVE_DIR / f"counterfactual_{number}_1.png")
     )
 
     print(summary)
