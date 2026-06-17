@@ -2,12 +2,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import config
+from src.utils import denormalize
 from src.counterfact import l1_loss, l2_loss, generate_counterfactual
-
-
-def denormalize(image: torch.Tensor) -> torch.Tensor:
-    """Converts a normalized MNIST tensor back to [0,1] pixel range for display."""
-    return image * config.MNIST_STD + config.MNIST_MEAN
 
 
 def compute_metrics(model, plausibility_model, original, counterfactual, target_class, device="cpu"):
@@ -103,8 +99,6 @@ def plot_counterfactual_grid(model, plausibility_model, examples, device="cpu",
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
         print(f"Figure saved to {save_path}")
-
-    plt.show()
 
     # --- aggregate stats across all examples ---
     summary = {

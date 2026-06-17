@@ -36,3 +36,11 @@ def merge_image_saliency( image: torch.Tensor , saliency: torch.Tensor ) -> torc
     #    image = image.unsqueeze(0)
     image = image.unsqueeze(0)
     return image
+
+def denormalize(image):
+    """Converts a normalized MNIST tensor back to [0,1] raw pixel scale."""
+    return image * config.MNIST_STD + config.MNIST_MEAN
+
+def normalize(image):
+    """Converts a [0,1] raw pixel tensor to the normalized scale models expect."""
+    return (image - config.MNIST_MEAN) / config.MNIST_STD

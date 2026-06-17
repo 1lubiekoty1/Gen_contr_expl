@@ -1,17 +1,20 @@
 import torch
 import torch.nn.functional as F
 
+import config
+from src.utils import normalize, denormalize
+
 
 # here I make some metrics that will act as loss functions for counterfact generator
 
 # PEANTLY FOR GENERAL CHANGES
 def l1_loss(original, counterfactual):
-    return torch.abs(counterfactual - original).sum()
+    return torch.abs(counterfactual - original).mean()
 
 
 # PEANTLY FOR SATURATED CHANGES
 def l2_loss(original, counterfactual):
-    return ((counterfactual - original) ** 2).sum()
+    return ((counterfactual - original) ** 2).mean()
 
 
 # CONNECTS TWO ABOVE
@@ -26,8 +29,8 @@ def perceptual_loss(original, counterfactual):
     return (sign_change * magnitude).sum()
 
 
-def counterfactual_loss(original, counterfactual, model_output, target_class, plausibility_model, lambda_prox=1.0,
-                        lambda_plau=0.1, alpha=0.5):
+def counterfactual_loss(original, counterfactual, model_output, target_class, plausibility_model, lambda_cls=1.0,
+                        lambda_prox=1.0, lambda_plau=0.1, alpha=0.5):
     # LOSS FUNCTION THAT COMBINES ALL METHODS - 
     # 
     # original: - original image
@@ -52,7 +55,7 @@ def counterfactual_loss(original, counterfactual, model_output, target_class, pl
     # 3. Plausibility: penaltise unmeaningful contrafacts
     plau_loss = plausibility_model.plausibility_loss(counterfactual, target_class)
 
-    total = cls_loss + lambda_prox * prox_loss + lambda_plau * plau_loss
+    total = lambda_cls * cls_loss + lambda_prox * prox_loss + lambda_plau * plau_loss
 
     return total, {
         "classification": cls_loss.item(),
@@ -61,6 +64,7 @@ def counterfactual_loss(original, counterfactual, model_output, target_class, pl
         "total": total.item()
     }
 
+
 # Valid pixel range after MNIST normalization (mean=0.1307, std=0.3081),
 # corresponding to raw pixel values in [0, 1].
 PIXEL_MIN = (0.0 - config.MNIST_MEAN) / config.MNIST_STD
@@ -68,9 +72,9 @@ PIXEL_MAX = (1.0 - config.MNIST_MEAN) / config.MNIST_STD
 
 
 def generate_counterfactual(model, plausibility_model, original, target_class,
-                             num_steps=300, lr=0.01,
-                             lambda_prox=1.0, lambda_plau=0.1, alpha=0.5,
-                             clamp_to_valid_range=True, verbose=True, device="cpu"):
+                            num_steps=300, lr=0.01,
+                            lambda_prox=1.0, lambda_plau=0.1, alpha=0.5,
+                            clamp_to_valid_range=True, verbose=True, device="cpu"):
     """
     Runs gradient descent directly on the image pixels to find a counterfactual.
 
@@ -143,3 +147,168 @@ def generate_counterfactual(model, plausibility_model, original, target_class,
         best_cf = counterfactual.detach().clone()
 
     return best_cf, history
+
+
+def generate_counterfactual_latent(model, plausibility_model, original, target_class,
+                                   num_steps=300, lr=0.05,
+                                   lambda_cls=1.0, lambda_prox=1.0, alpha=0.5,
+                                   verbose=True, device="cpu"):
+    """
+    Optimizes a latent code in the target-class autoencoder's latent space,
+    then decodes it to produce the counterfactual. Plausibility is enforced
+    structurally: the decoder can only produce images resembling real
+    `target_class` digits, so no separate plausibility loss is needed.
+    """
+    model.eval()
+    for p in model.parameters():
+        p.requires_grad_(False)
+
+    ae = plausibility_model.autoencoders[target_class].to(device)
+    ae.eval()
+    for p in ae.parameters():
+        p.requires_grad_(False)
+
+    original = original.to(device).detach()
+    original_raw = denormalize(original)
+
+    with torch.no_grad():
+        z0 = ae.encoder(original)  # encoder was trained on normalized inputs
+
+    z = z0.clone().detach().requires_grad_(True)
+    optimizer = torch.optim.Adam([z], lr=lr)
+
+    history = []
+    best_decoded, best_prox = None, None
+
+    for step in range(num_steps):
+        optimizer.zero_grad()
+
+        decoded_raw = ae.decoder(z)  # [0,1] scale (Sigmoid output)
+        decoded_norm = normalize(decoded_raw)  # back to model's expected scale
+
+        output = model(decoded_norm)
+        target = torch.tensor([target_class], device=device)
+        cls_loss = F.nll_loss(torch.log(output + 1e-12), target)
+        prox_loss = l1_l2_loss(original_raw, decoded_raw, alpha)
+
+        total = lambda_cls * cls_loss + lambda_prox * prox_loss
+        total.backward()
+        optimizer.step()
+
+        pred = output.argmax(dim=1).item()
+        components = {
+            "classification": cls_loss.item(),
+            "proximity": prox_loss.item(),
+            "total": total.item(),
+            "pred": pred,
+        }
+        history.append(components)
+
+        if pred == target_class:
+            if best_prox is None or components["proximity"] < best_prox:
+                best_prox = components["proximity"]
+                best_decoded = decoded_norm.detach().clone()
+
+        if verbose and (step % 20 == 0 or step == num_steps - 1):
+            print(f"Step {step:03d} | total={total.item():.4f} "
+                  f"| cls={cls_loss.item():.4f} | prox={prox_loss.item():.4f} "
+                  f"| pred={pred}")
+
+    if best_decoded is None:
+        best_decoded = decoded_norm.detach().clone()
+
+    return best_decoded, history
+
+def compute_digit_mask(image, dilation_radius=3, threshold=0.1):
+    """
+    Computes a binary mask covering the digit's silhouette, dilated by
+    dilation_radius pixels. Defines the region where optimization is allowed.
+
+    image: tensor (1,1,28,28), normalized
+    returns: tensor (1,1,28,28), float binary (0.0 or 1.0)
+    """
+    raw = denormalize(image.detach())
+    binary = (raw > threshold).float()
+
+    if dilation_radius > 0:
+        kernel_size = 2 * dilation_radius + 1
+        binary = F.max_pool2d(binary, kernel_size=kernel_size,
+                              stride=1, padding=dilation_radius)
+    return binary
+
+
+def generate_counterfactual_masked(model, plausibility_model, original, target_class,
+                                    num_steps=300, lr=0.01,
+                                    lambda_cls=1.0, lambda_prox=1.0, lambda_plau=0.1, alpha=0.5,
+                                    dilation_radius=3, threshold=0.1,
+                                    clamp_to_valid_range=True, verbose=True, device="cpu"):
+    """
+    Pixel-space counterfactual optimization with silhouette masking.
+    Changes are constrained to the region around the original digit's
+    silhouette (dilated by dilation_radius pixels), preventing the
+    diffuse background noise seen in unconstrained pixel-space optimization.
+
+    Returns:
+        best_cf: tensor (1,1,28,28), best counterfactual found
+        history: list of per-step loss dicts
+        mask: tensor (1,1,28,28), the binary mask used (useful for visualization)
+    """
+    model.eval()
+    for p in model.parameters():
+        p.requires_grad_(False)
+
+    original = original.to(device).detach()
+    mask = compute_digit_mask(original, dilation_radius, threshold).to(device)
+
+    counterfactual = original.clone().detach().requires_grad_(True)
+    optimizer = torch.optim.Adam([counterfactual], lr=lr)
+
+    history = []
+    best_cf = counterfactual.detach().clone()
+    best_prox = None
+
+    for step in range(num_steps):
+        optimizer.zero_grad()
+
+        output = model(counterfactual)
+        loss, components = counterfactual_loss(
+            original, counterfactual, output, target_class,
+            plausibility_model, lambda_cls, lambda_prox, lambda_plau, alpha
+        )
+
+        loss.backward()
+
+        # Zero gradients outside the mask — prevents Adam from accumulating
+        # momentum for background pixels
+        with torch.no_grad():
+            counterfactual.grad *= mask
+
+        optimizer.step()
+
+        # Hard projection: even with zeroed gradients, Adam's momentum can
+        # leak tiny updates outside the mask — this catches that
+        with torch.no_grad():
+            counterfactual.data = original + (counterfactual.data - original) * mask
+            if clamp_to_valid_range:
+                counterfactual.clamp_(PIXEL_MIN, PIXEL_MAX)
+
+        pred = output.argmax(dim=1).item()
+        components["pred"] = pred
+        history.append(components)
+
+        if pred == target_class:
+            if best_prox is None or components["proximity"] < best_prox:
+                best_prox = components["proximity"]
+                best_cf = counterfactual.detach().clone()
+
+        if verbose and (step % 20 == 0 or step == num_steps - 1):
+            print(f"Step {step:03d} | total={components['total']:.4f} "
+                  f"| cls={components['classification']:.4f} "
+                  f"| prox={components['proximity']:.4f} "
+                  f"| plau={components['plausibility']:.4f} "
+                  f"| pred={pred}")
+
+    if best_prox is None:
+        best_cf = counterfactual.detach().clone()
+
+    return best_cf, history, mask
