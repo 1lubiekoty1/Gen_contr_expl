@@ -33,3 +33,7 @@ LEARNING_RATE = 0.001
 # NORMALIZATION (MNIST mean & std, used everywhere images are loaded/clamped)
 MNIST_MEAN = 0.1307
 MNIST_STD = 0.3081
+
+# AUTOENCODERS
+
+LATENT_DIM = 32

@@ -26,13 +26,9 @@ def save_image( fig: plt.Figure , filename: str ):
 def merge_image_saliency( image: torch.Tensor , saliency: torch.Tensor ) -> torch.Tensor:
     saliency = saliency - saliency.mean()
     saliency = saliency/saliency.max()
-    #squeezed = False
-    #if( image.dim() == 4 ):
-    #    image = image.squeeze()
-    #    squeezed = True
-    image = image.squeeze()
+    if( image.dim() == 4 ):
+        image = image.squeeze()
     image = image + saliency
-    #if( squeezed ):
-    #    image = image.unsqueeze(0)
-    image = image.unsqueeze(0)
+    if( image.dim() == 3 ):
+        image = image.unsqueeze(0)
     return image

@@ -1,17 +1,18 @@
 import torch
 import torch.nn.functional as F
+import config
 
 
 # here I make some metrics that will act as loss functions for counterfact generator
 
 # PEANTLY FOR GENERAL CHANGES
 def l1_loss(original, counterfactual):
-    return torch.abs(counterfactual - original).sum()
+    return torch.abs(counterfactual - original).mean()
 
 
 # PEANTLY FOR SATURATED CHANGES
 def l2_loss(original, counterfactual):
-    return ((counterfactual - original) ** 2).sum()
+    return ((counterfactual - original) ** 2).mean()
 
 
 # CONNECTS TWO ABOVE
@@ -23,7 +24,7 @@ def l1_l2_loss(original, counterfactual, alpha=0.5):
 def perceptual_loss(original, counterfactual):
     sign_change = ((counterfactual * original) < 0).float()
     magnitude = torch.abs(counterfactual - original)
-    return (sign_change * magnitude).sum()
+    return (sign_change * magnitude).mean()
 
 
 def counterfactual_loss(original, counterfactual, model_output, target_class, plausibility_model, lambda_prox=1.0,

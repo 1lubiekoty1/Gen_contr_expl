@@ -7,13 +7,14 @@ import config
 # A SIMPLE ENCODER THAT ENCODES A DIGIT IMAGE INTO A LATENT SPACE
 
 class MnistAutoencoder(nn.Module):
-    def __init__(self, latent_dim=32):
+    def __init__(self, latent_dim=config.LATENT_DIM ):
         super().__init__()
 
         self.encoder = nn.Sequential( # FROM 28x28 IMAGE TO LATENT_DIM
             nn.Flatten(),
             nn.Linear(28 * 28, 256), nn.ReLU(),
             nn.Linear(256, 128),      nn.ReLU(),
+            #nn.Linear( 28*28 , 128 ),
             nn.Linear(128, 64), nn.ReLU(),
             nn.Linear(64, latent_dim)
         )
@@ -36,8 +37,8 @@ class MnistAutoencoder(nn.Module):
             reconstructed = self.forward(x)
         return nn.functional.mse_loss(reconstructed, x)
 
-def train_autoencoder(loader, epochs=10, latent_dim=32, device="cpu"): # SIMPLE TRAINER
-    model = MnistAutoencoder(latent_dim).to(device)
+def train_autoencoder( model: nn.Module , loader, epochs=10, latent_dim=32, device="cpu"): # SIMPLE TRAINER
+    #model = MnistAutoencoder(latent_dim).to(device) #<-- stupidest line in existence
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     for epoch in range(epochs):
@@ -80,7 +81,7 @@ class ClassConditionalPlausibility:
             )
 
             self.autoencoders[digit] = train_autoencoder(
-                digit_loader, epochs=epochs, device=device
+                self.autoencoders[digit] , digit_loader, epochs=epochs, device=device
             )
 
     def save_trained_autoencoders( self ):
@@ -89,7 +90,7 @@ class ClassConditionalPlausibility:
 
     def load_saved_autoencoders( self ):
         for digit in range(self.digits):
-            load_model( self.autoencoders[digit] , "autoencoder_for_digit_" + str(digit) )
+            self.autoencoders[digit] = load_model( self.autoencoders[digit] , "autoencoder_for_digit_" + str(digit) )
 
     def plausibility_loss(self, counterfactual, target_class):
         # Returns reconstruction error under the target class autoencoder

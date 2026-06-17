@@ -5,3 +5,5 @@ but it was the first thing to come to my head and it simply makes sense
 I added "saliency map" - an image that show what part of original image is the most important in classification
 one_image_saliency: - what part of this specific image makes the model want to assign this class
 average_saliency: = what part of the image is the most important for the model in assigning this class
+
+I don't really know if plausibility works - it has large recon loss - every training gives no improvement
