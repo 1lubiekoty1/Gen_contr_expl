@@ -1,0 +1,27 @@
+First a "black box" was created - class MnistCNN. A standard convolutional model with two convolutional and one linear layers.
+<CNN.py>
+
+Next some metrics were made to measure changes in counterfactual image compared to original:
+ L1_loss - measures total change on the image
+ L2_loss - measures big changes ( squared )
+ <counterfact.py>
+
+Plausibility of counterfactual had to be calculated somehow so:
+ Autoencoder class was made
+ it encodes image to a latent space of 32 dimentions and decodes it
+ An autoencoder was trained for each digit 
+ Autoencoders allow for measuring plausibility
+<autoencoder.py>
+
+The idea on generationg counterfacts is to forward image through frozen MnistCNN and a special loss function
+and backward it. Exactly this is done multiple times in generate_counterfactual()
+
+The upper method will be used wher running main to transform image[number] to traget_class
+
+Another tactic is to move an image throught Autoencoder trained for a different class which should reshape
+the image into a target class. This is done in generate_counterfctual_latent()
+<countefact.py>
+
+There were some trials with calculating image saliency for target class but rather unsuccessful
+<saliency.py>
+
